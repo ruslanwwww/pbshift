@@ -1,0 +1,1173 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>PAR'BAR — чек-листы смены</title>
+<meta name="theme-color" content="#17120F">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="PAR'BAR">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600&family=Oswald:wght@400;500;600&display=swap" rel="stylesheet">
+
+<style>
+:root{
+  --base:#17120F; --surface:#211A15; --raised:#2B221B; --line:#3A2E25;
+  --brass:#E8C07A; --sage:#8FBF7A; --text:#F2EAE0; --muted:#9C8B7C; --danger:#D97066;
+  --pad:16px;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;padding:0}
+body{
+  background:var(--base);color:var(--text);
+  font-family:"Golos Text",system-ui,-apple-system,sans-serif;
+  font-size:16px;line-height:1.45;overscroll-behavior-y:none;
+}
+button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
+
+header{position:sticky;top:0;z-index:10;background:var(--base);border-bottom:1px solid var(--line);padding:calc(env(safe-area-inset-top) + 12px) var(--pad) 0}
+.head-row{display:flex;align-items:baseline;justify-content:space-between;gap:12px}
+h1{font-family:"Oswald",sans-serif;font-weight:500;font-size:23px;margin:0}
+.date{font-size:13px;color:var(--muted);white-space:nowrap}
+
+.modes{display:flex;gap:4px;margin:12px 0 0;padding:3px;background:var(--surface);border:1px solid var(--line);border-radius:10px}
+.mode{flex:1;padding:8px 4px;border-radius:7px;font-size:14px;color:var(--muted);text-align:center}
+.mode[aria-selected="true"]{background:var(--raised);color:var(--text)}
+
+.meter{height:3px;background:var(--line);border-radius:2px;margin:12px 0 0;overflow:hidden}
+.meter i{display:block;height:100%;width:0;background:var(--brass);transition:width .35s ease}
+.meter.full i{background:var(--sage)}
+.tally{font-size:13px;color:var(--muted);margin:8px 0 0}
+.tally b{color:var(--text);font-weight:500}
+.chip{margin-top:9px;padding:5px 11px;border-radius:7px;border:1px solid var(--line);background:var(--surface);font-size:13px;color:var(--muted)}
+.chip.neg{color:var(--danger);border-color:rgba(217,112,102,.45)}
+.chip.pos{color:var(--sage);border-color:rgba(143,191,122,.45)}
+
+nav{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;padding:12px var(--pad);margin:0 calc(var(--pad) * -1)}
+nav::-webkit-scrollbar{display:none}
+.tab{position:relative;flex:0 0 auto;padding:7px 13px;border-radius:8px;background:var(--surface);border:1px solid var(--line);font-family:"Oswald",sans-serif;font-size:15px;color:var(--muted);overflow:hidden}
+.tab .fill{position:absolute;inset:0 auto 0 0;width:0;background:rgba(232,192,122,.14);transition:width .35s ease}
+.tab .fill.done{background:rgba(143,191,122,.18)}
+.tab span{position:relative}
+.tab[aria-selected="true"]{color:var(--text);border-color:var(--brass)}
+
+main{padding:6px var(--pad) 100px}
+.grp{font-family:"Oswald",sans-serif;font-weight:500;font-size:15px;color:var(--brass);margin:22px 0 2px;padding-top:8px;border-top:1px solid var(--line)}
+.grp:first-child{border-top:none;margin-top:10px}
+.note{font-size:14.5px;color:var(--muted);margin:8px 0;padding-left:14px;border-left:2px solid var(--line)}
+
+.task{display:flex;gap:13px;align-items:flex-start;width:100%;text-align:left;padding:14px 2px;border-bottom:1px solid var(--line)}
+.box{flex:0 0 auto;width:25px;height:25px;margin-top:1px;border:2px solid var(--muted);border-radius:50%;display:grid;place-items:center;transition:background .18s,border-color .18s}
+.box svg{width:14px;height:14px;opacity:0;transform:scale(.5);transition:opacity .18s,transform .18s}
+.task.done .box{background:var(--sage);border-color:var(--sage)}
+.task.done .box svg{opacity:1;transform:scale(1)}
+.body{flex:1;min-width:0}
+.title{transition:color .18s}
+.task.done .title{color:var(--muted)}
+.by{display:block;font-size:13px;color:var(--brass);margin-top:3px}
+
+.field{padding:14px 2px;border-bottom:1px solid var(--line)}
+.field .title{display:block;margin-bottom:9px}
+.field.done .title{color:var(--muted)}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.row input.wide{width:100%}
+.row input{width:130px;padding:9px 11px;border-radius:8px;background:var(--raised);border:1px solid var(--line);color:var(--text);font:inherit}
+.row input:focus{outline:2px solid var(--brass);outline-offset:1px}
+.unit{font-size:14px;color:var(--muted)}
+.opt{padding:9px 15px;border-radius:8px;border:1px solid var(--line);background:var(--raised);font-size:15px;color:var(--muted)}
+.opt[aria-pressed="true"]{border-color:var(--sage);color:var(--text);background:rgba(143,191,122,.12)}
+
+.zone-card{border-bottom:1px solid var(--line);padding:17px 2px}
+.zone-head{display:flex;align-items:baseline;justify-content:space-between;gap:10px}
+.zone-name{font-family:"Oswald",sans-serif;font-size:18px;font-weight:500}
+.zone-count{font-size:14px;color:var(--muted)}
+.zone-count.ok{color:var(--sage)}
+.zone-bar{height:3px;background:var(--line);border-radius:2px;margin:10px 0;overflow:hidden}
+.zone-bar i{display:block;height:100%;background:var(--brass);transition:width .35s}
+.zone-bar i.ok{background:var(--sage)}
+.left{font-size:14px;color:var(--muted);margin:0;padding-left:18px}
+.left li{margin:3px 0}
+.more{font-size:13px;color:var(--muted);margin:5px 0 0 18px}
+.all-ok{font-size:14px;color:var(--sage);margin:0}
+.val{font-size:14px;color:var(--muted);margin:7px 0 0}
+.person{display:flex;justify-content:space-between;align-items:center;gap:12px;width:100%;text-align:left;padding:15px 2px;border-bottom:1px solid var(--line)}
+.person .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.person .me{font-size:13px;color:var(--muted);margin-left:6px}
+.sum{font-size:15px;font-weight:500;white-space:nowrap}
+.sum.neg{color:var(--danger)} .sum.pos{color:var(--sage)} .sum.zero{color:var(--muted)}
+.adj{display:flex;justify-content:space-between;gap:10px;align-items:flex-start;padding:10px 0;border-bottom:1px solid var(--line);font-size:14px}
+.adj .amt{white-space:nowrap;font-weight:500}
+.adj .amt.neg{color:var(--danger)} .adj .amt.pos{color:var(--sage)}
+.adj .why{flex:1;min-width:0;color:var(--muted)}
+.adj .x{color:var(--muted);padding:0 2px;font-size:18px;line-height:1}
+.btn-row{display:flex;gap:8px;margin-top:14px}
+.btn-row button{flex:1;padding:12px;border-radius:9px;font-weight:500}
+.btn-fine{background:rgba(217,112,102,.14);border:1px solid var(--danger);color:var(--danger)}
+.btn-bonus{background:rgba(143,191,122,.14);border:1px solid var(--sage);color:var(--sage)}
+.mgr-btn{width:100%;margin-top:16px;padding:12px;border-radius:9px;border:1px solid var(--line);background:var(--surface);color:var(--muted);font-size:15px}
+.close{display:block;width:100%;margin-top:12px;font-size:14px;color:var(--muted);text-align:center}
+.val b{color:var(--text);font-weight:500}
+
+footer{position:fixed;left:0;right:0;bottom:0;z-index:10;display:flex;gap:10px;align-items:center;padding:10px var(--pad) calc(env(safe-area-inset-bottom) + 10px);background:linear-gradient(to top,var(--base) 70%,transparent)}
+.who{flex:1;font-size:14px;color:var(--muted);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:left}
+.who b{color:var(--text);font-weight:500}
+.ghost{padding:8px 12px;border:1px solid var(--line);border-radius:8px;font-size:14px;color:var(--muted);background:var(--surface)}
+
+.sheet{position:fixed;inset:0;z-index:20;display:none;place-items:center;padding:var(--pad);background:rgba(10,7,5,.72);backdrop-filter:blur(3px)}
+.sheet.open{display:grid}
+.card{width:100%;max-width:380px;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:22px}
+.card h2{font-family:"Oswald",sans-serif;font-weight:500;font-size:20px;margin:0 0 6px}
+.card p{font-size:14px;color:var(--muted);margin:0 0 16px}
+.card input{width:100%;padding:13px 14px;border-radius:9px;background:var(--raised);border:1px solid var(--line);color:var(--text);font:inherit;margin-bottom:12px}
+.card input:focus{outline:2px solid var(--brass);outline-offset:1px}
+.primary{width:100%;padding:13px;border-radius:9px;background:var(--brass);color:#1B1309;font-weight:600}
+
+.banner{margin:12px var(--pad) 0;padding:10px 12px;border-radius:9px;background:var(--raised);border:1px solid var(--line);font-size:13px;color:var(--muted)}
+:focus-visible{outline:2px solid var(--brass);outline-offset:2px}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+
+<body>
+<header>
+  <div class="head-row">
+    <h1>PAR'BAR</h1>
+    <div class="date" id="date"></div>
+  </div>
+  <div class="modes" id="modes" role="tablist"></div>
+  <div class="meter" id="meter"><i></i></div>
+  <p class="tally" id="tally"></p>
+  <button class="chip" id="mybal" hidden></button>
+  <nav id="tabs" role="tablist"></nav>
+</header>
+
+<div class="banner" id="banner" hidden></div>
+<main id="view"></main>
+
+<footer>
+  <button class="who" id="who"></button>
+  <button class="ghost" id="reset">Сбросить</button>
+</footer>
+
+<div class="sheet" id="modal"></div>
+
+<div class="sheet" id="sheet">
+  <div class="card">
+    <h2>Кто на смене?</h2>
+    <p>Имя видят остальные рядом с отмеченными пунктами.</p>
+    <input id="nameInput" placeholder="Имя" autocomplete="name" enterkeyhint="done">
+    <button class="primary" id="saveName">Сохранить</button>
+  </div>
+</div>
+
+<script type="module">
+/* ═══════════════════════════════════════════════════════════════
+   1. FIREBASE — вставь данные из консоли (см. README).
+      Пока пусто, отметки хранятся только на этом телефоне.
+   ═══════════════════════════════════════════════════════════════ */
+const FIREBASE = {
+  apiKey: "AIzaSyBJ-8LShZwGCivZKUs31ttQvPCqy0HyPQg",
+  authDomain: "pbshtraf.firebaseapp.com",
+  databaseURL: "https://pbshtraf-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "pbshtraf"
+};
+
+/* Смена считается новой после 6 утра */
+const SHIFT_START_HOUR = 6;
+
+/* Код управляющего для доступа к штрафам и надбавкам.
+   Это не защита, а замок от случайных нажатий: код лежит в открытом коде страницы.
+   Настоящее разграничение прав — только через Firebase Authentication. */
+const MANAGER_PIN = "2580";
+
+/* Чек-лист зоны официанта — одинаковый для зон 1–3 */
+function waiterZone() {
+  return [
+    { t: "Прибыл к 11:20", type: "choice", options: ["Вовремя", "Опоздал"] },
+    "Проверить свою рабочую зону",
+    "Столы чистые: без разводов, следов, грязи и пыли",
+    "Диваны, кресла и стулья чистые, складки проверены на мусор",
+    "Пол в зоне чистый, без мусора и пятен",
+    "Пополнить салфетки и все расходные материалы",
+    "Освещение в зоне исправно",
+    "Протереть лампочки над столами",
+    "Протереть все растения в своей зоне",
+    "Протереть весь декор в своей зоне",
+  ];
+}
+
+/* Закрытие зоны официанта — одинаковое для зон 1–3 */
+function waiterZoneClose() {
+  return [
+    { h: "Столы и мебель" },
+    "Столы в зале и кабинах вымыты, без липких следов",
+    "Вся посуда убрана и сдана на мойку",
+    "Постановка на столах по стандартам",
+    "Мебель расставлена по схеме",
+    "Диваны, кресла и стулья проверены на мусор, складки тоже",
+
+    { h: "Зона и стейшен" },
+    "Кабины проверены после ухода гостей",
+    "Пол в зоне чистый, без мусора и пятен",
+    "Стейшен убран и укомплектован на следующую смену",
+    "Салфетки и расходники пополнены",
+    "Мусор из зоны и кабин вынесен",
+
+    { t: "Зона сдана администратору", type: "choice", options: ["Да", "Нет"] },
+  ];
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   2. ЧЕК-ЛИСТЫ
+      "строка"                       → обычная галочка
+      { h: "..." }                   → заголовок раздела
+      { n: "..." }                   → памятка без галочки
+      { t, type:"num", unit }        → числовое поле
+      { t, type:"text", ph }         → текстовое поле
+      { t, type:"choice", options }  → выбор варианта
+   ═══════════════════════════════════════════════════════════════ */
+const LISTS = [
+
+/* ───────────────────────── ОТКРЫТИЕ ───────────────────────── */
+{ id: "open", name: "Открытие", zones: [
+
+  { id: "adm", name: "Администратор", tasks: [
+    { h: "Открытие и персонал" },
+    "Прибыл на работу к 11:20",
+    "Включил кассу, проверил рабочую зону на наличие всего необходимого",
+    "Подготовил карты и пауэрбанки",
+    { t: "Пауэрбанков на начало смены", type: "num", unit: "шт" },
+    "Фото пауэрбанков отправлено управляющему",
+    "Проверил время прихода персонала",
+    "Проверил внешний вид и готовность сотрудников",
+    "Распределил официантов по зонам",
+    "Проверил чек-листы подготовки зон официантов",
+    "Распределил выявленные недостатки между ответственными",
+    "При отсутствии хостес принял рабочий телефон и бронирования",
+
+    { h: "Вход и общая готовность" },
+    "Входная группа и прилегающая территория чистые",
+    "Входные двери и стёкла чистые",
+    "Музыка и телевизоры включены, громкость комфортная",
+    "Кондиционеры работают, температура в зале комфортная",
+    "Нет посторонних или неприятных запахов",
+
+    { h: "Вытяжки и вентиляция" },
+    "Включены все вытяжки в зале и кабинках",
+    "Решётки и видимые части вытяжек чистые",
+    "Вытяжка в кальянной зоне включена",
+    "Нет постороннего шума или вибрации",
+
+    { h: "Зал и кабины" },
+    "Пол, столы и все видимые поверхности чистые",
+    "Диваны, кресла и стулья чистые, складки проверены на мусор",
+    "Мебель расставлена ровно и по схеме",
+    "Освещение полностью исправно",
+    "Растения и декор чистые",
+    "Стейшены официантов чистые и укомплектованы",
+    "Все кабины проверены лично и готовы к приёму гостей",
+
+    { h: "Бар и кальянная зона" },
+    "Барная стойка, холодильники и рабочие поверхности чистые",
+    "Ледогенератор и оборудование исправны",
+    "Посуда, инвентарь и расходники в достаточном количестве",
+    "Рабочая зона кальянщиков чистая",
+    "Кальяны, комплектующие, уголь и расходники готовы к работе",
+
+    { h: "Гостевые туалеты" },
+    "Пол, сантехника, унитазы и раковины чистые",
+    "Зеркала без разводов",
+    "Диспенсеры чистые и заполнены",
+    "Туалетная бумага, мыло и расходники пополнены",
+    "Освещение исправно, неприятного запаха нет",
+
+    { h: "Касса, телефон и бронирование" },
+    "Касса и R-Keeper включены и работают",
+    "Размен пересчитан и подготовлен",
+    { t: "Сумма размена", type: "num", unit: "₽" },
+    "Рабочий телефон заряжен, звук включён, у ответственного",
+    "Restoplace / журнал бронирований открыт и проверен",
+    "Проверены все бронирования на текущий день",
+
+    { h: "Контрольная точка" },
+    { t: "Заведение готово к 12:00", type: "choice", options: ["Да", "Нет"] },
+  ]},
+
+  { id: "z1", name: "Зона 1", tasks: waiterZone() },
+  { id: "z2", name: "Зона 2", tasks: waiterZone() },
+  { id: "z3", name: "Зона 3", tasks: waiterZone() },
+
+  { id: "bar", name: "Бар", tasks: [
+    { h: "Чистота и оборудование" },
+    "Бар, стойка и рабочие поверхности чистые",
+    "Кофемашина, кофемолка, холодильники, ледогенератор исправны",
+    "Весь инструмент бариста чистый и строго на своих местах",
+    "Протереть витрины и холодильник",
+
+    { h: "Кофе" },
+    "Включить кофемашину, прогреть группы",
+    "Настроить помол, снять пробный шот",
+
+    { h: "Продукты и остатки" },
+    "Холодильники заполнены полностью, этикетками вперёд",
+    "Проверить сроки и ротацию: старое вперёд, новое назад",
+    "Проверить маркировку",
+    "Проверить кофе, чай, молоко, сиропы, лёд, фрукты, добавки, заготовки",
+    "Заполнить витрину вареньями",
+    "Сделать закуп недостающего",
+
+    { h: "Расходники и посуда" },
+    "Пополнить салфетки, трубочки и остальные расходники",
+    "Проверить запас ходовых позиций",
+    "Натереть посуду при наличии разводов",
+
+    { h: "Стоп-лист" },
+    { t: "Что в стопе на смену", type: "text", ph: "Например: маракуйя, облепиха" },
+  ]},
+
+  { id: "hookah", name: "Кальянная", tasks: [
+    "Включить вытяжку кальянной зоны",
+    "Включить печь, разжечь первую партию углей",
+    "Проверить запас табака по вкусам",
+    "Промыть колбы и шахты с прошлой смены",
+    "Проверить шланги и уплотнители",
+    "Разложить щипцы, калауды, пробойники",
+    "Рабочая станция чистая",
+  ]},
+]},
+
+/* ───────────────────────── СМЕНА ───────────────────────── */
+{ id: "shift", name: "Смена", zones: [
+
+  { id: "cash", name: "Касса", tasks: [
+    { h: "Контрольные пересчёты" },
+    { t: "17:00 — сумма в кассе", type: "num", unit: "₽" },
+    { t: "19:00 — сумма в кассе", type: "num", unit: "₽" },
+    { t: "21:00 — сумма в кассе", type: "num", unit: "₽" },
+    { t: "23:00 — сумма в кассе", type: "num", unit: "₽" },
+    { h: "Итог по кассе" },
+    { t: "Расхождения за смену", type: "choice", options: ["Нет", "Были"] },
+    "Причина расхождения установлена и устранена",
+  ]},
+
+  { id: "rounds", name: "Обходы", tasks: [
+    { h: "Отмечай выполненный обход зала" },
+    "Обход 13:00",
+    "Обход 15:00",
+    "Обход 17:00",
+    "Обход 19:00",
+    "Обход 21:00",
+    "Обход 23:00",
+    { h: "По итогам смены" },
+    "Замечания для управляющего зафиксированы",
+  ]},
+
+  { id: "staff", name: "Персонал", people: true, tasks: [] },
+  { id: "history", name: "История", history: true, tasks: [] },
+
+  { id: "barshift", name: "Бар", tasks: [
+    { h: "Перед часом пик" },
+    "Холодильники заполнены максимально, охлаждённый резерв готов",
+    "Пополнены лёд, кофе, чай, молоко, сиропы, фрукты, заготовки, расходники",
+    "Натёрт запас посуды, рабочая зона в идеальном состоянии",
+    "Ходовые позиции лежат близко к рабочей зоне",
+
+    { h: "Заканчивается на баре" },
+    { t: "Передать администратору", type: "text", ph: "Что заканчивается" },
+
+    { h: "Цикл в свободное время" },
+    { n: "Нет заказов — не ждёшь следующего, а начинаешь цикл заново." },
+    { n: "1. Холодильники: заполнить, подтянуть товар, развернуть этикетки." },
+    { n: "2. Рабочая зона: протереть поверхности, убрать капли, навести порядок." },
+    { n: "3. Посуда: натереть чистую, проверить качество уже натёртой." },
+    { n: "4. Расходники: проверить количество, пополнить, подготовить резерв." },
+    { n: "5. Заготовки: проверить количество и свежесть, пополнить." },
+    { n: "6. Оборудование: быстрая очистка, проверка исправности." },
+    { n: "7. Запасы: проверить ходовые позиции, сказать администратору, что заканчивается." },
+    { n: "8. Внешний вид: посмотреть на бар глазами гостя, убрать лишнее." },
+    { n: "Закончил пункт 8 → возвращаешься к пункту 1. Заказ → приготовил → вернулся туда, где остановился." },
+
+    { h: "Телефон" },
+    { n: "Нет заказов ≠ нет работы. До телефона должен быть пройден весь цикл." },
+    { n: "Если хотя бы один пункт цикла требует работы — сначала работа." },
+
+    { h: "Главное правило" },
+    { n: "Бар в любой момент должен выглядеть так, будто его только что подготовили к открытию." },
+    { n: "Не ждём, пока закончится — пополняем. Не ждём, пока станет грязно — убираем." },
+  ]},
+
+  { id: "rules", name: "Регламент", tasks: [
+    { h: "Обход зала и контроль сервиса" },
+    { n: "Каждые 20 минут — полный обход по маршруту «восьмёрка»." },
+    { n: "Контролировать своевременную уборку использованной посуды." },
+    { n: "Следить, чтобы официанты вовремя подходили к гостям." },
+    { n: "Контролировать быструю подготовку освободившихся столов." },
+    { n: "Не допускать, чтобы гость сам искал сотрудника." },
+    { n: "При проблеме: назначить ответственного, задать срок, перепроверить." },
+
+    { h: "Дисциплина персонала" },
+    { n: "Официанты — на закреплённых местах и в своих зонах." },
+    { n: "Никого на гостевых местах, без скопления персонала у бара." },
+    { n: "Минимум телефонов при гостях." },
+    { n: "Уход с рабочего места — только с уведомлением администратора." },
+    { n: "Стандарты общения с гостями и внутри коллектива." },
+
+    { h: "Работа с гостями" },
+    { n: "Приветствовать постоянных гостей." },
+    { n: "Получать обратную связь и замечать недовольство до жалобы." },
+    { n: "При конфликте подключаться лично до полного урегулирования." },
+
+    { h: "Бар и кальянная зона" },
+    { n: "Контролировать скорость отдачи напитков и кальянов." },
+    { n: "Не допускать скопления грязной посуды на баре." },
+    { n: "Порядок на кальянной станции, дисциплина бармена и кальянщиков." },
+
+    { h: "Кабины и бронирования" },
+    { n: "Следить за загрузкой кабин и ближайшими бронями." },
+    { n: "После ухода гостей — быстрая подготовка кабины." },
+    { n: "Проверять тарификатор, не допускать накладок с бронями." },
+
+    { h: "Атмосфера и комфорт" },
+    { n: "Температура, громкость музыки и освещение — комфортные." },
+    { n: "При изменении загрузки корректировать кондиционирование." },
+    { n: "Уровень дыма не должен мешать гостям." },
+
+    { h: "Санузлы в течение смены" },
+    { n: "Бумага, мыло, расходники — в наличии." },
+    { n: "Без мусора и запаха; при необходимости — внеплановая уборка." },
+
+    { h: "Главный принцип" },
+    { n: "Касса и расчёт гостей сочетаются с присутствием в зале." },
+    { n: "Не ждать проблемы: заметить отклонение, принять меры, проверить результат." },
+  ]},
+]},
+
+/* ───────────────────────── ЗАКРЫТИЕ ───────────────────────── */
+{ id: "close", name: "Закрытие", zones: [
+
+  { id: "adm", name: "Администратор", tasks: [
+    { h: "Контроль смены и персонал" },
+    "Проверено, что рабочие зоны сотрудниками сданы",
+    { t: "Пауэрбанков на конец смены", type: "num", unit: "шт" },
+    "Фото всех пауэрбанков отправлено управляющему",
+    "Заработная плата выдана",
+
+    { h: "Приёмка зон" },
+    { n: "Работу выполняют сами зоны. Администратор обходит и принимает." },
+    "Зона 1 принята",
+    "Зона 2 принята",
+    "Зона 3 принята",
+    "Бар принят",
+    "Кальянная принята",
+    "Зона хостес принята",
+    "Зона кассы принята",
+    "Выявленные недостатки устранены на месте",
+
+    { h: "Касса и отчётность" },
+    "Закрыт кассовый день",
+    "Касса выключена после завершения всех операций",
+    "Подготовлены отчёты: расходы, удаления, корректировки",
+    "Выручка пересчитана и сверена",
+    { t: "Выручка за смену", type: "num", unit: "₽" },
+    "Фото чеков и итоговый отчёт отправлены в рабочую группу",
+    "Наличные и размен убраны в сейф",
+
+    { h: "Оборудование и вытяжки" },
+    "Телевизоры и музыкальное оборудование выключены",
+    "Вытяжки в зале и кабинках выключены",
+    "Вытяжка кальянной зоны выключена",
+    "Кондиционеры в зале и кабинках выключены",
+    "Освещение выключено после финального обхода",
+
+    { h: "Санузел и вода" },
+    "Гостевые туалеты проверены перед закрытием",
+    "Краны в баре, санузлах и остальных зонах закрыты",
+    "Гигиенический душ в уборной закрыт",
+    "Нет протечек и оставленной включённой воды",
+
+    { h: "Финальное закрытие" },
+    "Закрыты служебные помещения: туалеты, склад, офис",
+    "Проверены холодильники, электроприборы и оборудование",
+    "Закрыт служебный вход",
+    "Закрыт центральный вход",
+    { t: "Заведение полностью закрыто", type: "choice", options: ["Да", "Нет"] },
+  ]},
+
+  { id: "z1", name: "Зона 1", tasks: waiterZoneClose() },
+  { id: "z2", name: "Зона 2", tasks: waiterZoneClose() },
+  { id: "z3", name: "Зона 3", tasks: waiterZoneClose() },
+
+  { id: "bar", name: "Бар", tasks: [
+    { h: "Кофемашина и оборудование" },
+    "Промыть группы кофемашины (бэкфлаш с таблеткой)",
+    "Промыть холдеры, корзины и групповые сетки",
+    "Промыть и продуть паровые краны, протереть питчеры",
+    "Очистить кофемолку, смести остатки кофе",
+
+    { h: "Чистота бара" },
+    "Все поверхности протёрты: стойка, рабочие поверхности, полки и нижние полки",
+    "Холодильники чистые внутри и снаружи, закрыты",
+    "Пол чистый под стойкой и по всей рабочей зоне",
+    "Мусор вынесен, в каждой ёмкости новый мешок",
+
+    { h: "Инвентарь и запасы" },
+    "Весь инвентарь чистый и на своих местах, ничего не разбросано",
+    "Никаких личных и лишних вещей — только рабочий инвентарь",
+    "Холодильники заполнены, выкладка приведена в порядок",
+    "Сиропы и рабочие продукты закрыты и расставлены по местам",
+    "Расходники пополнены для следующей смены",
+    "Оставшаяся чистая посуда натёрта",
+
+    { h: "Остатки" },
+    "Проверить сроки и остатки",
+    { t: "Заканчивается — передать администратору", type: "text", ph: "Список позиций" },
+
+    { t: "Бар готов к открытию следующей смены", type: "choice", options: ["Да", "Нет"] },
+  ]},
+
+  { id: "hookah", name: "Кальянная", tasks: [
+    { h: "Кальяны и инвентарь" },
+    "Колбы, шахты и комплектующие вымыты и на своих местах",
+    "Шланги продуты и просушены",
+    "Чаши очищены от остатков табака и нагара",
+    "Мундштуки промыты и убраны",
+    "Весь рабочий инвентарь чистый и на своих местах",
+
+    { h: "Чистота зоны" },
+    "Все поверхности протёрты: столы, полки и нижние полки",
+    "Никаких личных и лишних вещей — только рабочий инвентарь",
+    "Угольная зона очищена от угольной пыли и мусора",
+    "Пол чистый, в том числе под столами, полками и оборудованием",
+    "Мусор вынесен, в каждой ёмкости новый мешок",
+
+    { h: "Табак и расходники" },
+    "Использованный табак, пепел и остатки углей утилизированы",
+    "Табак закрыт и расставлен по своим местам",
+    "Чаши и расходники пополнены и расставлены",
+    "Остатки табаков посчитаны по вкусам",
+    { t: "Заканчивается — передать администратору", type: "text", ph: "Список позиций" },
+
+    { h: "Выключение" },
+    "Печи проверены и выключены после завершения работы",
+    { t: "Кальянная готова к открытию следующей смены", type: "choice", options: ["Да", "Нет"] },
+  ]},
+
+  { id: "host", name: "Хостес", tasks: [
+    { h: "Чистота зоны" },
+    "Зона полностью чистая и аккуратная",
+    "Никаких личных и лишних вещей — убрано всё, что не относится к работе",
+    "Все поверхности протёрты: стойка, столешница, полки",
+    "Пол и пространство вокруг зоны чистые",
+
+    { h: "Оборудование" },
+    "Рации возвращены на места и поставлены на зарядку",
+    "Светильники протёрты — без пыли, пятен и следов от рук",
+    "Светильники собраны, на местах и поставлены на зарядку",
+    "Всё рабочее оборудование на своих местах",
+
+    { h: "Брони" },
+    "Все брони на следующий день выставлены и проверены",
+
+    { t: "Зона готова к следующей смене", type: "choice", options: ["Да", "Нет"] },
+  ]},
+
+  { id: "cashier", name: "Касса", tasks: [
+    { h: "Чистота зоны" },
+    "Никаких личных вещей: телефонов, сумок, одежды, еды, напитков",
+    "Никаких лишних предметов — только необходимое для работы",
+    "Все поверхности протёрты: столешница, кассовая зона, оборудование, полки",
+    "Нижняя полка протёрта: без пыли, мусора и лишних вещей",
+    "Стейшн и зона вокруг него без пыли, оборудование аккуратно размещено",
+    "Пол в зоне кассы чистый",
+    "Мусорка освобождена, зона приведена в порядок",
+
+    { h: "Оборудование и расходники" },
+    "Пауэрбанки поставлены на зарядку и готовы к выдаче гостям",
+    "Рации поставлены на зарядку и находятся на своих местах",
+    "Чековая лента проверена, запасные рулоны на месте",
+
+    { n: "В течение смены: порядок поддерживается постоянно, мусорка не переполняется." },
+    { t: "Касса принимается следующим кассиром готовой", type: "choice", options: ["Да", "Нет"] },
+  ]},
+]},
+
+];
+
+/* ═══════════════════════════════════════════════════════════════
+   3. ЛОГИКА
+   ═══════════════════════════════════════════════════════════════ */
+const $ = (id) => document.getElementById(id);
+const CHECK = '<svg viewBox="0 0 20 20" fill="none" stroke="#17120F" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10.5l4 4 8-9"/></svg>';
+
+const isTask  = (x) => typeof x === "string" || (x && x.t !== undefined);
+const titleOf = (x) => (typeof x === "string" ? x : x.t);
+const typeOf  = (x) => (typeof x === "string" ? "check" : x.type || "check");
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;" }[c]));
+
+function shiftDate() {
+  const d = new Date();
+  if (d.getHours() < SHIFT_START_HOUR) d.setDate(d.getDate() - 1);
+  return d.toLocaleDateString("sv");
+}
+
+const state = {
+  date: shiftDate(),
+  list: localStorage.getItem("pb.list") || "open",
+  zone: localStorage.getItem("pb.zone") || "adm",
+  name: localStorage.getItem("pb.name") || "",
+  data: {},
+  staff: {},
+  adj: {},
+  manager: localStorage.getItem("pb.mgr") === "1",
+  history: null,   // снимок всех начислений по датам, грузится по запросу
+};
+
+let remote = null, pendingRender = false;
+
+const curList = () => LISTS.find((l) => l.id === state.list) || LISTS[0];
+const curZone = () => curList().zones.find((z) => z.id === state.zone) || curList().zones[0];
+
+function mark(zoneId, i) {
+  const l = state.data[state.list];
+  return (l && l[zoneId] && l[zoneId][i]) || null;
+}
+
+const stamp = (v) => (v === undefined ? { by: state.name, at: Date.now() }
+                                      : { by: state.name, at: Date.now(), v });
+
+const pid = (n) => n.toLowerCase().replace(/[^a-zа-яё0-9]+/g, "_").replace(/^_|_$/g, "") || "x";
+const money = (n) => (n > 0 ? "+" : n < 0 ? "−" : "") + Math.abs(n).toLocaleString("ru") + " ₽";
+const entriesOf = (obj) => Object.entries(obj || {});
+
+function balance(personId) {
+  return entriesOf(state.adj[personId])
+    .reduce((s, [, a]) => s + (a.type === "bonus" ? a.amount : -a.amount), 0);
+}
+
+function saveLocal() {
+  localStorage.setItem("pb." + state.date,
+    JSON.stringify({ c: state.data, s: state.staff, a: state.adj }));
+}
+
+function write(zoneId, i, value) {
+  if (!state.name) { openSheet(); return; }
+  if (remote) {
+    const r = remote.ref(remote.db, `checklists/${state.date}/${state.list}/${zoneId}/${i}`);
+    value === null ? remote.remove(r) : remote.set(r, value);
+  } else {
+    const d = state.data;
+    d[state.list] = d[state.list] || {};
+    d[state.list][zoneId] = d[state.list][zoneId] || {};
+    if (value === null) delete d[state.list][zoneId][i];
+    else d[state.list][zoneId][i] = value;
+    saveLocal();
+    render();
+  }
+}
+
+async function connect() {
+  if (!FIREBASE.databaseURL) {
+    const saved = JSON.parse(localStorage.getItem("pb." + state.date) || "{}");
+    state.data = saved.c || {};
+    state.staff = saved.s || {};
+    state.adj = saved.a || {};
+    $("banner").hidden = false;
+    $("banner").textContent = "Firebase не подключён — отметки видны только на этом телефоне.";
+    registerSelf();
+    render();
+    return;
+  }
+  try {
+    const { initializeApp } = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js");
+    const { getDatabase, ref, onValue, set, remove, push, get } =
+      await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js");
+
+    const db = getDatabase(initializeApp(FIREBASE));
+    remote = { db, ref, set, remove, push, get };
+
+    const fail = (err) => {
+      $("banner").hidden = false;
+      $("banner").textContent = "Нет доступа к базе: " + err.message + ". Проверь правила Realtime Database.";
+    };
+    const watch = (path, key, after) => onValue(ref(db, path + "/" + state.date), (snap) => {
+      state[key] = snap.val() || {};
+      if (after) after();
+      render();
+    }, fail);
+
+    watch("checklists", "data");
+    watch("staff", "staff", registerSelf);
+    watch("adj", "adj");
+  } catch (e) {
+    $("banner").hidden = false;
+    $("banner").textContent = "Firebase не загрузился: " + e.message;
+    render();
+  }
+}
+
+/* Отмечает текущего пользователя как вышедшего на смену сегодня */
+function registerSelf() {
+  if (!state.name) return;
+  const id = pid(state.name), rec = { name: state.name, at: Date.now() };
+  if (state.staff[id]) return;
+  if (remote) remote.set(remote.ref(remote.db, `staff/${state.date}/${id}`), rec);
+  else { state.staff[id] = rec; saveLocal(); }
+}
+
+function addAdj(personId, type, amount, reason) {
+  const who = state.staff[personId];
+  const rec = { type, amount, reason: reason || "", by: state.name, at: Date.now(),
+                to: who ? who.name : personId };
+  if (remote) {
+    const r = remote.push(remote.ref(remote.db, `adj/${state.date}/${personId}`));
+    remote.set(r, rec);
+  } else {
+    state.adj[personId] = state.adj[personId] || {};
+    state.adj[personId]["l" + Date.now()] = rec;
+    saveLocal(); render();
+  }
+}
+
+function delAdj(date, personId, key) {
+  if (remote) remote.remove(remote.ref(remote.db, `adj/${date}/${personId}/${key}`));
+  else if (date === state.date) { delete state.adj[personId][key]; saveLocal(); render(); }
+  if (state.history && state.history[date] && state.history[date][personId])
+    delete state.history[date][personId][key];
+}
+
+function resetShift() {
+  if (!confirm(`Снять все отметки в разделе «${curList().name}» за сегодня? Отменить нельзя.`)) return;
+  if (remote) remote.remove(remote.ref(remote.db, `checklists/${state.date}/${state.list}`));
+  else {
+    delete state.data[state.list];
+    localStorage.setItem("pb." + state.date, JSON.stringify(state.data));
+    render();
+  }
+}
+
+function stats(zone) {
+  const items = zone.tasks.map((x, i) => [x, i]).filter(([x]) => isTask(x));
+  const done = items.filter(([, i]) => mark(zone.id, i)).length;
+  return { done, total: items.length, items };
+}
+const timeOf = (ts) => new Date(ts).toLocaleTimeString("ru", { hour: "2-digit", minute: "2-digit" });
+
+/* ---------- отрисовка ---------- */
+function render() {
+  const a = document.activeElement;
+  if (a && a.tagName === "INPUT" && a.closest("main")) { pendingRender = true; return; }
+  pendingRender = false;
+
+  $("date").textContent = new Date(state.date + "T12:00")
+    .toLocaleDateString("ru", { weekday: "short", day: "numeric", month: "long" });
+
+  renderModes();
+
+  let done = 0, total = 0;
+  curList().zones.forEach((z) => { const s = stats(z); done += s.done; total += s.total; });
+  const pct = total ? Math.round(done / total * 100) : 0;
+  $("meter").classList.toggle("full", total > 0 && done === total);
+  $("meter").firstElementChild.style.width = pct + "%";
+  $("tally").innerHTML = total && done === total
+    ? `Раздел «${curList().name}» закрыт полностью`
+    : `Готово <b>${done}</b> из ${total}`;
+
+  $("who").innerHTML = state.name ? `Смена: <b>${esc(state.name)}</b>` : "Нажми, чтобы указать имя";
+
+  renderMyBalance();
+  renderTabs();
+  if (state.zone === "all") renderSummary();
+  else if (curZone().people) renderStaff();
+  else if (curZone().history) renderHistory();
+  else renderTasks();
+}
+
+/* Свой итог по штрафам и надбавкам — виден рядом со своей зоной */
+function renderMyBalance() {
+  const chip = $("mybal");
+  const id = state.name ? pid(state.name) : null;
+  const cnt = id ? entriesOf(state.adj[id]).length : 0;
+  if (!cnt) { chip.hidden = true; return; }
+  const bal = balance(id);
+  chip.hidden = false;
+  chip.className = "chip " + (bal < 0 ? "neg" : bal > 0 ? "pos" : "");
+  chip.textContent = `Штрафы и надбавки: ${money(bal)}`;
+  chip.onclick = () => openPerson(id);
+}
+
+function renderModes() {
+  const box = $("modes");
+  box.innerHTML = "";
+  LISTS.forEach((l) => {
+    const b = document.createElement("button");
+    b.className = "mode";
+    b.setAttribute("role", "tab");
+    b.setAttribute("aria-selected", state.list === l.id);
+    b.textContent = l.name;
+    b.onclick = () => {
+      state.list = l.id;
+      const zs = curList().zones;
+      if (state.zone !== "all" && !zs.some((z) => z.id === state.zone)) state.zone = zs[0].id;
+      localStorage.setItem("pb.list", state.list);
+      localStorage.setItem("pb.zone", state.zone);
+      render();
+    };
+    box.appendChild(b);
+  });
+}
+
+function renderTabs() {
+  const tabs = $("tabs");
+  tabs.innerHTML = "";
+  [...curList().zones, { id: "all", name: "Все зоны" }].forEach((z) => {
+    const b = document.createElement("button");
+    b.className = "tab";
+    b.setAttribute("role", "tab");
+    b.setAttribute("aria-selected", state.zone === z.id);
+    if (z.id !== "all") {
+      const s = stats(z);
+      const p = s.total ? Math.round(s.done / s.total * 100) : 0;
+      b.innerHTML = `<i class="fill${s.total && s.done === s.total ? " done" : ""}" style="width:${p}%"></i><span>${esc(z.name)}</span>`;
+    } else {
+      b.innerHTML = `<span>${z.name}</span>`;
+    }
+    b.onclick = () => { state.zone = z.id; localStorage.setItem("pb.zone", z.id); render(); };
+    tabs.appendChild(b);
+  });
+}
+
+function renderTasks() {
+  const zone = curZone();
+  const view = $("view");
+  view.innerHTML = "";
+
+  zone.tasks.forEach((item, i) => {
+    if (!isTask(item)) {
+      const el = document.createElement(item.h ? "h3" : "p");
+      el.className = item.h ? "grp" : "note";
+      el.textContent = item.h || item.n;
+      view.appendChild(el);
+      return;
+    }
+    const m = mark(zone.id, i), type = typeOf(item), title = esc(titleOf(item));
+    const sig = m ? `<span class="by">${esc(m.by)} · ${timeOf(m.at)}</span>` : "";
+
+    if (type === "check") {
+      const b = document.createElement("button");
+      b.className = "task" + (m ? " done" : "");
+      b.setAttribute("aria-pressed", !!m);
+      b.innerHTML = `<span class="box">${CHECK}</span><span class="body"><span class="title">${title}</span>${sig}</span>`;
+      b.onclick = () => write(zone.id, i, m ? null : stamp());
+      view.appendChild(b);
+      return;
+    }
+
+    const box = document.createElement("div");
+    box.className = "field" + (m ? " done" : "");
+
+    if (type === "num" || type === "text") {
+      const isNum = type === "num";
+      box.innerHTML = `<span class="title">${title}</span>
+        <div class="row">${isNum
+          ? `<input type="number" inputmode="decimal" value="${m ? esc(m.v) : ""}" placeholder="—"><span class="unit">${esc(item.unit || "")}</span>`
+          : `<input type="text" class="wide" value="${m ? esc(m.v) : ""}" placeholder="${esc(item.ph || "")}">`}</div>${sig}`;
+      const inp = box.querySelector("input");
+      inp.onchange = () => {
+        const v = inp.value.trim();
+        write(zone.id, i, v === "" ? null : stamp(isNum ? Number(v) : v));
+      };
+      inp.onblur = () => { if (pendingRender) render(); };
+    } else {
+      box.innerHTML = `<span class="title">${title}</span><div class="row"></div>${sig}`;
+      const row = box.querySelector(".row");
+      item.options.forEach((opt) => {
+        const b = document.createElement("button");
+        b.className = "opt";
+        b.textContent = opt;
+        b.setAttribute("aria-pressed", !!m && m.v === opt);
+        b.onclick = () => write(zone.id, i, m && m.v === opt ? null : stamp(opt));
+        row.appendChild(b);
+      });
+    }
+    view.appendChild(box);
+  });
+}
+
+function renderStaff() {
+  const view = $("view");
+  view.innerHTML = "";
+  const me = state.name ? pid(state.name) : null;
+  const all = entriesOf(state.staff).sort((a, b) => a[1].at - b[1].at);
+  const visible = state.manager ? all : all.filter(([id]) => id === me);
+
+  if (!all.length) {
+    view.innerHTML = `<p class="note">Пока никто не отметился. Человек появляется здесь, как только введёт своё имя в приложении.</p>`;
+  } else if (!visible.length) {
+    view.innerHTML = `<p class="note">Укажи своё имя внизу экрана, чтобы видеть свои начисления.</p>`;
+  } else {
+    visible.forEach(([id, p]) => {
+      const bal = balance(id);
+      const cnt = entriesOf(state.adj[id]).length;
+      const b = document.createElement("button");
+      b.className = "person";
+      b.innerHTML = `<span class="nm">${esc(p.name)}${id === me ? ` <span class="me">это я</span>` : ""}</span>
+        <span class="sum ${bal < 0 ? "neg" : bal > 0 ? "pos" : "zero"}">${cnt ? money(bal) : "—"}</span>`;
+      b.onclick = () => openPerson(id);
+      view.appendChild(b);
+    });
+  }
+
+  const btn = document.createElement("button");
+  btn.className = "mgr-btn";
+  btn.textContent = state.manager ? "Выйти из режима управляющего" : "Войти как управляющий";
+  btn.onclick = () => {
+    if (state.manager) {
+      state.manager = false;
+      localStorage.removeItem("pb.mgr");
+    } else {
+      const v = prompt("Код управляющего");
+      if (v === null) return;
+      if (v.trim() !== MANAGER_PIN) { alert("Неверный код"); return; }
+      state.manager = true;
+      localStorage.setItem("pb.mgr", "1");
+    }
+    render();
+  };
+  view.appendChild(btn);
+}
+
+/* ---------- история начислений ---------- */
+const HISTORY_DAYS = 30;
+
+async function loadHistory() {
+  if (remote) {
+    const snap = await remote.get(remote.ref(remote.db, "adj"));
+    state.history = snap.val() || {};
+  } else {
+    const out = {};
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      const m = /^pb\.(\d{4}-\d{2}-\d{2})$/.exec(k || "");
+      if (!m) continue;
+      const v = JSON.parse(localStorage.getItem(k) || "{}");
+      if (v.a) out[m[1]] = v.a;
+    }
+    state.history = out;
+  }
+}
+
+/* Плоский список записей за последние HISTORY_DAYS дней */
+function historyRows() {
+  const me = state.name ? pid(state.name) : null;
+  const from = new Date();
+  from.setDate(from.getDate() - HISTORY_DAYS);
+  const limit = from.toLocaleDateString("sv");
+  const rows = [];
+  entriesOf(state.history).forEach(([date, byPerson]) => {
+    if (date < limit) return;
+    entriesOf(byPerson).forEach(([personId, recs]) => {
+      if (!state.manager && personId !== me) return;
+      entriesOf(recs).forEach(([key, a]) => {
+        rows.push({ date, personId, key, ...a,
+                    signed: a.type === "bonus" ? a.amount : -a.amount });
+      });
+    });
+  });
+  rows.sort((x, y) => (x.date === y.date ? y.at - x.at : (x.date < y.date ? 1 : -1)));
+  return rows;
+}
+
+function renderHistory() {
+  const view = $("view");
+  view.innerHTML = "";
+
+  if (state.history === null) {
+    view.innerHTML = `<p class="note">Загружаю историю…</p>`;
+    loadHistory().then(render).catch((e) => {
+      state.history = {};
+      view.innerHTML = `<p class="note">Не удалось загрузить историю: ${esc(e.message)}</p>`;
+    });
+    return;
+  }
+
+  const rows = historyRows();
+  if (!rows.length) {
+    view.innerHTML = `<p class="note">За последние ${HISTORY_DAYS} дней начислений нет.</p>`;
+  } else {
+    if (state.manager) {
+      const byPerson = {};
+      rows.forEach((r) => {
+        byPerson[r.personId] = byPerson[r.personId] || { name: r.to || r.personId, sum: 0, n: 0 };
+        byPerson[r.personId].sum += r.signed;
+        byPerson[r.personId].n++;
+      });
+      const head = document.createElement("h3");
+      head.className = "grp";
+      head.textContent = `Итого за ${HISTORY_DAYS} дней`;
+      view.appendChild(head);
+      Object.entries(byPerson).sort((a, b) => a[1].sum - b[1].sum).forEach(([, p]) => {
+        const el = document.createElement("div");
+        el.className = "person";
+        el.innerHTML = `<span class="nm">${esc(p.name)} <span class="me">${p.n} зап.</span></span>
+          <span class="sum ${p.sum < 0 ? "neg" : p.sum > 0 ? "pos" : "zero"}">${money(p.sum)}</span>`;
+        view.appendChild(el);
+      });
+    }
+
+    let lastDate = null;
+    rows.forEach((r) => {
+      if (r.date !== lastDate) {
+        lastDate = r.date;
+        const hd = document.createElement("h3");
+        hd.className = "grp";
+        hd.textContent = new Date(r.date + "T12:00")
+          .toLocaleDateString("ru", { weekday: "short", day: "numeric", month: "long" });
+        view.appendChild(hd);
+      }
+      const el = document.createElement("div");
+      el.className = "adj";
+      el.innerHTML = `<span class="amt ${r.signed < 0 ? "neg" : "pos"}">${money(r.signed)}</span>
+        <span class="why">${state.manager ? esc(r.to || r.personId) + " · " : ""}${esc(r.reason || "без причины")}
+          <br><span style="font-size:12px">поставил ${esc(r.by)} · ${timeOf(r.at)}</span></span>
+        ${state.manager ? `<button class="x" title="Удалить">×</button>` : ""}`;
+      const x = el.querySelector(".x");
+      if (x) x.onclick = () => {
+        if (!confirm("Удалить эту запись?")) return;
+        delAdj(r.date, r.personId, r.key);
+        render();
+      };
+      view.appendChild(el);
+    });
+  }
+
+  const btn = document.createElement("button");
+  btn.className = "mgr-btn";
+  btn.textContent = "Обновить";
+  btn.onclick = () => { state.history = null; render(); };
+  view.appendChild(btn);
+}
+
+function renderSummary() {
+  const view = $("view");
+  view.innerHTML = "";
+  curList().zones.forEach((z) => {
+    const s = stats(z);
+    if (!s.total) return;
+    const ok = s.done === s.total;
+    const left = s.items.filter(([, i]) => !mark(z.id, i)).map(([x]) => esc(titleOf(x)));
+    const vals = s.items
+      .map(([x, i]) => [x, mark(z.id, i)])
+      .filter(([, m]) => m && m.v !== undefined)
+      .map(([x, m]) => `${esc(titleOf(x))}: <b>${esc(m.v)}</b>`);
+    const el = document.createElement("section");
+    el.className = "zone-card";
+    el.innerHTML = `
+      <div class="zone-head">
+        <span class="zone-name">${esc(z.name)}</span>
+        <span class="zone-count${ok ? " ok" : ""}">${s.done} / ${s.total}</span>
+      </div>
+      <div class="zone-bar"><i class="${ok ? "ok" : ""}" style="width:${Math.round(s.done / s.total * 100)}%"></i></div>
+      ${ok ? `<p class="all-ok">Зона готова</p>`
+           : `<ul class="left">${left.slice(0, 6).map((t) => `<li>${t}</li>`).join("")}</ul>` +
+             (left.length > 6 ? `<p class="more">и ещё ${left.length - 6}</p>` : "")}
+      ${vals.map((v) => `<p class="val">${v}</p>`).join("")}`;
+    view.appendChild(el);
+  });
+}
+
+/* ---------- модальное окно ---------- */
+function openModal(inner, setup) {
+  const m = $("modal");
+  m.innerHTML = `<div class="card">${inner}</div>`;
+  m.classList.add("open");
+  m.onclick = (e) => { if (e.target === m) closeModal(); };
+  const c = m.querySelector(".close");
+  if (c) c.onclick = closeModal;
+  if (setup) setup(m);
+}
+function closeModal() { $("modal").classList.remove("open"); $("modal").innerHTML = ""; }
+
+/* Карточка одного сотрудника: список начислений + форма */
+function openPerson(personId) {
+  const person = state.staff[personId];
+  const canEdit = state.manager;
+  const list = entriesOf(state.adj[personId]).sort((a, b) => b[1].at - a[1].at);
+  const bal = balance(personId);
+
+  const rows = list.length ? list.map(([k, a]) => {
+    const signed = a.type === "bonus" ? a.amount : -a.amount;
+    return `<div class="adj" data-k="${k}">
+      <span class="amt ${signed < 0 ? "neg" : "pos"}">${money(signed)}</span>
+      <span class="why">${esc(a.reason || "без причины")}<br><span style="font-size:12px">${esc(a.by)} · ${timeOf(a.at)}</span></span>
+      ${canEdit ? `<button class="x" title="Удалить">×</button>` : ""}
+    </div>`;
+  }).join("") : `<p style="font-size:14px;color:var(--muted);margin:4px 0 0">Пока ничего нет.</p>`;
+
+  const form = canEdit ? `
+    <div class="row" style="margin-top:16px">
+      <input type="number" inputmode="numeric" id="amt" placeholder="Сумма" style="width:110px">
+      <input type="text" id="why" class="wide" placeholder="За что" style="flex:1;width:auto">
+    </div>
+    <div class="btn-row">
+      <button class="btn-fine" id="bFine">Штраф</button>
+      <button class="btn-bonus" id="bBonus">Надбавка</button>
+    </div>` : "";
+
+  openModal(`
+    <h2>${esc(person ? person.name : personId)}</h2>
+    <p>Итог за смену: <b class="${bal < 0 ? "sum neg" : bal > 0 ? "sum pos" : "sum zero"}">${money(bal)}</b></p>
+    ${rows}${form}
+    <button class="close">Закрыть</button>`,
+  (m) => {
+    m.querySelectorAll(".adj .x").forEach((b) => {
+      b.onclick = () => {
+        if (!confirm("Удалить эту запись?")) return;
+        delAdj(state.date, personId, b.closest(".adj").dataset.k);
+        closeModal();
+      };
+    });
+    if (!canEdit) return;
+    const amt = m.querySelector("#amt"), why = m.querySelector("#why");
+    const submit = (type) => {
+      const v = Number(amt.value);
+      if (!v || v <= 0) { amt.focus(); return; }
+      addAdj(personId, type, Math.round(v), why.value.trim());
+      closeModal();
+    };
+    m.querySelector("#bFine").onclick = () => submit("fine");
+    m.querySelector("#bBonus").onclick = () => submit("bonus");
+  });
+}
+
+/* ---------- имя ---------- */
+function openSheet() {
+  $("sheet").classList.add("open");
+  $("nameInput").value = state.name;
+  setTimeout(() => $("nameInput").focus(), 50);
+}
+$("saveName").onclick = () => {
+  const v = $("nameInput").value.trim();
+  if (!v) return;
+  state.name = v;
+  localStorage.setItem("pb.name", v);
+  $("sheet").classList.remove("open");
+  registerSelf();
+  render();
+};
+$("nameInput").onkeydown = (e) => { if (e.key === "Enter") $("saveName").click(); };
+$("who").onclick = openSheet;
+$("reset").onclick = resetShift;
+
+setInterval(() => { if (shiftDate() !== state.date) location.reload(); }, 60000);
+
+if (!state.name) openSheet();
+connect();
+
+if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});
+</script>
+</body>
+</html>
