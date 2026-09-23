@@ -91,7 +91,16 @@ main{padding:6px var(--pad) 100px}
 .zone-bar i.ok{background:var(--sage)}
 .left{font-size:14px;color:var(--muted);margin:0;padding-left:18px}
 .left li{margin:3px 0}
-.more{font-size:13px;color:var(--muted);margin:5px 0 0 18px}
+.more{font-size:13px;color:var(--brass);margin:6px 0 0 18px}
+.zone-head{cursor:pointer}
+.chev{color:var(--muted);font-size:13px;margin-left:6px}
+.full{list-style:none;margin:9px 0 0;padding:0;font-size:14px}
+.full li{position:relative;padding:6px 0 6px 21px;color:var(--text)}
+.full li::before{content:"○";position:absolute;left:0;top:6px;color:var(--line);font-size:13px}
+.full li.d{color:var(--muted)}
+.full li.d::before{content:"✓";color:var(--sage)}
+.full li .w{display:block;font-size:12.5px;color:var(--brass);margin-top:1px}
+.expand-all{width:100%;margin:10px 0 2px;padding:10px;border-radius:9px;border:1px solid var(--line);background:var(--surface);color:var(--muted);font-size:14px}
 .all-ok{font-size:14px;color:var(--sage);margin:0}
 .val{font-size:14px;color:var(--muted);margin:7px 0 0}
 .person{display:flex;justify-content:space-between;align-items:center;gap:12px;width:100%;text-align:left;padding:15px 2px;border-bottom:1px solid var(--line)}
@@ -126,6 +135,16 @@ footer{position:fixed;left:0;right:0;bottom:0;z-index:10;display:flex;gap:10px;a
 .card input:focus{outline:2px solid var(--brass);outline-offset:1px}
 .primary{width:100%;padding:13px;border-radius:9px;background:var(--brass);color:#1B1309;font-weight:600}
 
+.alarm{position:fixed;left:0;right:0;top:0;z-index:40;display:none;
+  padding:calc(env(safe-area-inset-top) + 18px) var(--pad) 18px;
+  background:var(--brass);color:#1B1309;box-shadow:0 8px 28px rgba(0,0,0,.55)}
+.alarm.on{display:block}
+.alarm h3{font-family:"Oswald",sans-serif;font-weight:600;font-size:22px;margin:0 0 3px}
+.alarm p{margin:0 0 14px;font-size:15px;opacity:.85}
+.alarm button{width:100%;padding:13px;border-radius:9px;background:#1B1309;color:var(--brass);font-weight:600;font-size:16px}
+.roles{display:flex;flex-wrap:wrap;gap:7px;margin:2px 0 14px}
+.roles .opt{padding:8px 13px;font-size:14px}
+.card h3{font-size:14px;color:var(--muted);font-weight:400;margin:0 0 7px}
 .banner{margin:12px var(--pad) 0;padding:10px 12px;border-radius:9px;background:var(--raised);border:1px solid var(--line);font-size:13px;color:var(--muted)}
 :focus-visible{outline:2px solid var(--brass);outline-offset:2px}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
@@ -153,6 +172,12 @@ footer{position:fixed;left:0;right:0;bottom:0;z-index:10;display:flex;gap:10px;a
   <button class="ghost" id="reset">Сбросить</button>
 </footer>
 
+<div class="alarm" id="alarm">
+  <h3 id="alarmTitle"></h3>
+  <p id="alarmTime"></p>
+  <button id="alarmOk">Понятно</button>
+</div>
+
 <div class="sheet" id="modal"></div>
 
 <div class="sheet" id="sheet">
@@ -160,6 +185,8 @@ footer{position:fixed;left:0;right:0;bottom:0;z-index:10;display:flex;gap:10px;a
     <h2>Кто на смене?</h2>
     <p>Имя видят остальные рядом с отмеченными пунктами.</p>
     <input id="nameInput" placeholder="Имя" autocomplete="name" enterkeyhint="done">
+    <h3>Роль — от неё зависят напоминания</h3>
+    <div class="roles" id="roles"></div>
     <button class="primary" id="saveName">Сохранить</button>
   </div>
 </div>
@@ -184,8 +211,34 @@ const SHIFT_START_HOUR = 6;
    Настоящее разграничение прав — только через Firebase Authentication. */
 const MANAGER_PIN = "2580";
 
+/* ═══════════════════════════════════════════════════════════════
+   РОЛИ И НАПОМИНАНИЯ
+   every — повтор каждые N минут внутри окна from–to
+   at    — разовое напоминание в указанное время
+   ═══════════════════════════════════════════════════════════════ */
+const ROLES = [
+  { id: "adm",    name: "Администратор" },
+  { id: "mgr",    name: "Управляющий" },
+  { id: "bar",    name: "Бармен" },
+  { id: "hookah", name: "Кальянщик" },
+  { id: "waiter", name: "Официант" },
+  { id: "host",   name: "Хостес" },
+];
+
+const REMINDERS = [
+  { role: "adm", id: "round", every: 20, from: "12:00", to: "01:00", text: "Обход зала" },
+  { role: "adm", id: "cash17", at: "17:00", text: "Пересчёт кассы" },
+  { role: "adm", id: "cash19", at: "19:00", text: "Пересчёт кассы" },
+  { role: "adm", id: "cash21", at: "21:00", text: "Пересчёт кассы" },
+  { role: "adm", id: "cash23", at: "23:00", text: "Пересчёт кассы" },
+  { role: "adm", id: "report", at: "23:30", text: "Отчёты: расходы, удаления, корректировки" },
+
+  { role: "mgr", id: "sched",   at: "18:00", text: "Составить расписание на завтра" },
+  { role: "mgr", id: "tarbush", at: "20:00", text: "Расплатиться с Тарбушем" },
+];
+
 /* Чек-лист зоны официанта — одинаковый для зон 1–3 */
-function waiterZone() {
+function waiterZone(hasLamps = true) {
   return [
     { t: "Прибыл к 11:20", type: "choice", options: ["Вовремя", "Опоздал"] },
     "Проверить свою рабочую зону",
@@ -194,7 +247,8 @@ function waiterZone() {
     "Пол в зоне чистый, без мусора и пятен",
     "Пополнить салфетки и все расходные материалы",
     "Освещение в зоне исправно",
-    "Протереть лампочки над столами",
+    ...(hasLamps ? ["Протереть лампочки над столами"] : []),
+    "Игровые приставки уложены правильно, провода не торчат",
     "Протереть все растения в своей зоне",
     "Протереть весь декор в своей зоне",
   ];
@@ -212,6 +266,7 @@ function waiterZoneClose() {
 
     { h: "Зона и стейшен" },
     "Кабины проверены после ухода гостей",
+    "Игровые приставки уложены правильно, провода не торчат",
     "Пол в зоне чистый, без мусора и пятен",
     "Стейшен убран и укомплектован на следующую смену",
     "Салфетки и расходники пополнены",
@@ -246,7 +301,6 @@ const LISTS = [
     "Проверил внешний вид и готовность сотрудников",
     "Распределил официантов по зонам",
     "Проверил чек-листы подготовки зон официантов",
-    "Распределил выявленные недостатки между ответственными",
     "При отсутствии хостес принял рабочий телефон и бронирования",
 
     { h: "Вход и общая готовность" },
@@ -299,7 +353,7 @@ const LISTS = [
 
   { id: "z1", name: "Зона 1", tasks: waiterZone() },
   { id: "z2", name: "Зона 2", tasks: waiterZone() },
-  { id: "z3", name: "Зона 3", tasks: waiterZone() },
+  { id: "z3", name: "Зона 3", tasks: waiterZone(false) },
 
   { id: "bar", name: "Бар", tasks: [
     { h: "Чистота и оборудование" },
@@ -313,9 +367,8 @@ const LISTS = [
     "Настроить помол, снять пробный шот",
 
     { h: "Продукты и остатки" },
-    "Холодильники заполнены полностью, этикетками вперёд",
+    "Холодильники заполнены",
     "Проверить сроки и ротацию: старое вперёд, новое назад",
-    "Проверить маркировку",
     "Проверить кофе, чай, молоко, сиропы, лёд, фрукты, добавки, заготовки",
     "Заполнить витрину вареньями",
     "Сделать закуп недостающего",
@@ -622,7 +675,9 @@ const state = {
   data: {},
   staff: {},
   adj: {},
+  role: localStorage.getItem("pb.role") || "",
   manager: localStorage.getItem("pb.mgr") === "1",
+  alarm: null,
   history: null,   // снимок всех начислений по датам, грузится по запросу
 };
 
@@ -1051,121 +1106,209 @@ function renderHistory() {
   view.appendChild(btn);
 }
 
+const expanded = new Set();
+
 function renderSummary() {
   const view = $("view");
   view.innerHTML = "";
-  curList().zones.forEach((z) => {
+
+  const zones = curList().zones.filter((z) => stats(z).total > 0);
+  const allOpen = zones.every((z) => expanded.has(state.list + "/" + z.id));
+
+  const toggleAll = document.createElement("button");
+  toggleAll.className = "expand-all";
+  toggleAll.textContent = allOpen ? "Свернуть все зоны" : "Развернуть все зоны";
+  toggleAll.onclick = () => {
+    zones.forEach((z) => {
+      const k = state.list + "/" + z.id;
+      allOpen ? expanded.delete(k) : expanded.add(k);
+    });
+    render();
+  };
+  view.appendChild(toggleAll);
+
+  zones.forEach((z) => {
     const s = stats(z);
-    if (!s.total) return;
+    const key = state.list + "/" + z.id;
+    const open = expanded.has(key);
     const ok = s.done === s.total;
     const left = s.items.filter(([, i]) => !mark(z.id, i)).map(([x]) => esc(titleOf(x)));
+
     const vals = s.items
       .map(([x, i]) => [x, mark(z.id, i)])
       .filter(([, m]) => m && m.v !== undefined)
       .map(([x, m]) => `${esc(titleOf(x))}: <b>${esc(m.v)}</b>`);
+
+    let body;
+    if (open) {
+      body = `<ul class="full">${s.items.map(([x, i]) => {
+        const m = mark(z.id, i);
+        return `<li class="${m ? "d" : ""}">${esc(titleOf(x))}${
+          m ? `<span class="w">${esc(m.by)} · ${timeOf(m.at)}${m.v !== undefined ? " · " + esc(m.v) : ""}</span>` : ""}</li>`;
+      }).join("")}</ul>`;
+    } else if (ok) {
+      body = `<p class="all-ok">Зона готова</p>`;
+    } else {
+      body = `<ul class="left">${left.slice(0, 6).map((t) => `<li>${t}</li>`).join("")}</ul>` +
+             (left.length > 6 ? `<p class="more">и ещё ${left.length - 6} — нажми, чтобы раскрыть</p>` : "");
+    }
+
     const el = document.createElement("section");
     el.className = "zone-card";
     el.innerHTML = `
       <div class="zone-head">
-        <span class="zone-name">${esc(z.name)}</span>
+        <span class="zone-name">${esc(z.name)}<span class="chev">${open ? "свернуть" : "раскрыть"}</span></span>
         <span class="zone-count${ok ? " ok" : ""}">${s.done} / ${s.total}</span>
       </div>
       <div class="zone-bar"><i class="${ok ? "ok" : ""}" style="width:${Math.round(s.done / s.total * 100)}%"></i></div>
-      ${ok ? `<p class="all-ok">Зона готова</p>`
-           : `<ul class="left">${left.slice(0, 6).map((t) => `<li>${t}</li>`).join("")}</ul>` +
-             (left.length > 6 ? `<p class="more">и ещё ${left.length - 6}</p>` : "")}
-      ${vals.map((v) => `<p class="val">${v}</p>`).join("")}`;
+      ${body}
+      ${open ? "" : vals.map((v) => `<p class="val">${v}</p>`).join("")}`;
+    el.querySelector(".zone-head").onclick = () => {
+      open ? expanded.delete(key) : expanded.add(key);
+      render();
+    };
     view.appendChild(el);
   });
 }
 
-/* ---------- модальное окно ---------- */
-function openModal(inner, setup) {
-  const m = $("modal");
-  m.innerHTML = `<div class="card">${inner}</div>`;
-  m.classList.add("open");
-  m.onclick = (e) => { if (e.target === m) closeModal(); };
-  const c = m.querySelector(".close");
-  if (c) c.onclick = closeModal;
-  if (setup) setup(m);
-}
-function closeModal() { $("modal").classList.remove("open"); $("modal").innerHTML = ""; }
+/* ---------- напоминания ---------- */
+const hm = (s) => { const [a, b] = s.split(":").map(Number); return a * 60 + b; };
+const fmtHM = (m) => String(Math.floor((m % 1440) / 60)).padStart(2, "0") + ":" + String(m % 60).padStart(2, "0");
 
-/* Карточка одного сотрудника: список начислений + форма */
-function openPerson(personId) {
-  const person = state.staff[personId];
-  const canEdit = state.manager;
-  const list = entriesOf(state.adj[personId]).sort((a, b) => b[1].at - a[1].at);
-  const bal = balance(personId);
-
-  const rows = list.length ? list.map(([k, a]) => {
-    const signed = a.type === "bonus" ? a.amount : -a.amount;
-    return `<div class="adj" data-k="${k}">
-      <span class="amt ${signed < 0 ? "neg" : "pos"}">${money(signed)}</span>
-      <span class="why">${esc(a.reason || "без причины")}<br><span style="font-size:12px">${esc(a.by)} · ${timeOf(a.at)}</span></span>
-      ${canEdit ? `<button class="x" title="Удалить">×</button>` : ""}
-    </div>`;
-  }).join("") : `<p style="font-size:14px;color:var(--muted);margin:4px 0 0">Пока ничего нет.</p>`;
-
-  const form = canEdit ? `
-    <div class="row" style="margin-top:16px">
-      <input type="number" inputmode="numeric" id="amt" placeholder="Сумма" style="width:110px">
-      <input type="text" id="why" class="wide" placeholder="За что" style="flex:1;width:auto">
-    </div>
-    <div class="btn-row">
-      <button class="btn-fine" id="bFine">Штраф</button>
-      <button class="btn-bonus" id="bBonus">Надбавка</button>
-    </div>` : "";
-
-  openModal(`
-    <h2>${esc(person ? person.name : personId)}</h2>
-    <p>Итог за смену: <b class="${bal < 0 ? "sum neg" : bal > 0 ? "sum pos" : "sum zero"}">${money(bal)}</b></p>
-    ${rows}${form}
-    <button class="close">Закрыть</button>`,
-  (m) => {
-    m.querySelectorAll(".adj .x").forEach((b) => {
-      b.onclick = () => {
-        if (!confirm("Удалить эту запись?")) return;
-        delAdj(state.date, personId, b.closest(".adj").dataset.k);
-        closeModal();
-      };
+let actx = null;
+function beep() {
+  try {
+    actx = actx || new (window.AudioContext || window.webkitAudioContext)();
+    if (actx.state === "suspended") actx.resume();
+    [0, 0.28, 0.56].forEach((t) => {
+      const o = actx.createOscillator(), g = actx.createGain();
+      o.type = "sine"; o.frequency.value = 880;
+      o.connect(g); g.connect(actx.destination);
+      const s = actx.currentTime + t;
+      g.gain.setValueAtTime(0.0001, s);
+      g.gain.exponentialRampToValueAtTime(0.35, s + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001, s + 0.22);
+      o.start(s); o.stop(s + 0.24);
     });
-    if (!canEdit) return;
-    const amt = m.querySelector("#amt"), why = m.querySelector("#why");
-    const submit = (type) => {
-      const v = Number(amt.value);
-      if (!v || v <= 0) { amt.focus(); return; }
-      addAdj(personId, type, Math.round(v), why.value.trim());
-      closeModal();
-    };
-    m.querySelector("#bFine").onclick = () => submit("fine");
-    m.querySelector("#bBonus").onclick = () => submit("bonus");
+  } catch (e) { /* звук недоступен — баннер всё равно покажется */ }
+}
+
+const firedKey = () => "pb.fired." + state.date;
+const firedSet = () => new Set(JSON.parse(localStorage.getItem(firedKey()) || "[]"));
+function markFired(k) {
+  const s = firedSet(); s.add(k);
+  localStorage.setItem(firedKey(), JSON.stringify([...s]));
+}
+
+function showAlarm(key, title, sub) {
+  state.alarm = key;
+  $("alarmTitle").textContent = title;
+  $("alarmTime").textContent = sub;
+  $("alarm").classList.add("on");
+  beep();
+  if (navigator.vibrate) navigator.vibrate([250, 120, 250]);
+  if (document.hidden && "Notification" in window && Notification.permission === "granted") {
+    try { new Notification("PAR'BAR", { body: title, tag: key }); } catch (e) {}
+  }
+}
+
+$("alarmOk").onclick = () => {
+  if (state.alarm) markFired(state.alarm);
+  state.alarm = null;
+  $("alarm").classList.remove("on");
+};
+
+function checkReminders() {
+  if (!state.role || state.alarm) return;
+  const now = new Date();
+  const mins = now.getHours() * 60 + now.getMinutes();
+  const fired = firedSet();
+
+  for (const r of REMINDERS) {
+    if (r.role !== state.role) continue;
+    let key, title, sub;
+
+    if (r.every) {
+      const from = hm(r.from), to = hm(r.to);
+      const inWindow = to > from ? (mins >= from && mins <= to) : (mins >= from || mins <= to);
+      if (!inWindow) continue;
+      const elapsed = mins >= from ? mins - from : mins + 1440 - from;
+      const slot = Math.floor(elapsed / r.every);
+      if (slot < 1) continue;
+      key = `${r.id}-${slot}`;
+      title = r.text;
+      sub = "По графику в " + fmtHM(from + slot * r.every);
+    } else {
+      const at = hm(r.at);
+      if (mins < at || mins > at + 45) continue;   // окно 45 минут, потом молчит
+      key = r.id;
+      title = r.text;
+      sub = "Запланировано на " + r.at;
+    }
+
+    if (fired.has(key)) continue;
+    showAlarm(key, title, sub);
+    return;
+  }
+}
+
+/* Звук в браузере включается только после касания экрана */
+document.addEventListener("pointerdown", function once() {
+  try {
+    actx = actx || new (window.AudioContext || window.webkitAudioContext)();
+    if (actx.state === "suspended") actx.resume();
+  } catch (e) {}
+  document.removeEventListener("pointerdown", once);
+});
+
+/* ---------- имя ---------- */
+let pickedRole = "";
+function renderRoles() {
+  const box = $("roles");
+  box.innerHTML = "";
+  ROLES.forEach((r) => {
+    const b = document.createElement("button");
+    b.className = "opt";
+    b.textContent = r.name;
+    b.setAttribute("aria-pressed", pickedRole === r.id);
+    b.onclick = () => { pickedRole = r.id; renderRoles(); };
+    box.appendChild(b);
   });
 }
 
-/* ---------- имя ---------- */
 function openSheet() {
   $("sheet").classList.add("open");
   $("nameInput").value = state.name;
+  pickedRole = state.role;
+  renderRoles();
   setTimeout(() => $("nameInput").focus(), 50);
 }
 $("saveName").onclick = () => {
   const v = $("nameInput").value.trim();
   if (!v) return;
   state.name = v;
+  state.role = pickedRole;
   localStorage.setItem("pb.name", v);
+  localStorage.setItem("pb.role", pickedRole);
   $("sheet").classList.remove("open");
+  if (pickedRole && "Notification" in window && Notification.permission === "default") {
+    Notification.requestPermission().catch(() => {});
+  }
   registerSelf();
   render();
+  checkReminders();
 };
 $("nameInput").onkeydown = (e) => { if (e.key === "Enter") $("saveName").click(); };
 $("who").onclick = openSheet;
 $("reset").onclick = resetShift;
 
 setInterval(() => { if (shiftDate() !== state.date) location.reload(); }, 60000);
+setInterval(checkReminders, 20000);
+document.addEventListener("visibilitychange", () => { if (!document.hidden) checkReminders(); });
 
 if (!state.name) openSheet();
 connect();
+checkReminders();
 
 if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});
 </script>

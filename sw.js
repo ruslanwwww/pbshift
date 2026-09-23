@@ -1,4 +1,4 @@
-const CACHE = "shift-v6";
+const CACHE = "shift-v10";
 const ASSETS = ["./", "./par-bar.html", "./manifest.json", "./icon-192.png", "./icon-512.png"];
 
 self.addEventListener("install", (e) => {
